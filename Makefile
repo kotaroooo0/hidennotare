@@ -13,8 +13,8 @@ MYSQL_LOG:=/tmp/slow-query.log
 
 KATARU_CFG:=./kataribe.toml
 
-SLACKCAT:=slackcat --tee --channel general
-SLACKRAW:=slackcat --channel general
+SLACKCAT:=slackcat --tee
+SLACKRAW:=slackcat
 
 PPROF:=go tool pprof -png -output pprof.png http://localhost:6060/debug/pprof/profile
 
@@ -110,18 +110,16 @@ pprof:
 .PHONY: slow-on
 slow-on:
 	sudo mysql -e "set global slow_query_log_file = '$(MYSQL_LOG)'; set global long_query_time = 0; set global slow_query_log = ON;"
-	# sudo $(MYSQL_CMD) -e "set global slow_query_log_file = '$(MYSQL_LOG)'; set global long_query_time = 0; set global slow_query_log = ON;"
 
 .PHONY: slow-off
 slow-off:
 	sudo mysql -e "set global slow_query_log = OFF;"
-	# sudo $(MYSQL_CMD) -e "set global slow_query_log = OFF;"
 
 .PHONY: setup
 setup:
 	sudo apt install -y percona-toolkit dstat git unzip snapd
 	git config --global user.email "k33asby@gmail.com"
-	git config --global user.name "kotaroooo0
+	git config --global user.name "kotaroooo0"
 	git config --system alias.st status
 	git config --system alias.ad add
 	git config --system alias.ci commit
