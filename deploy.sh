@@ -1,26 +1,35 @@
+#!/bin/bash
 set -ex
+ISUCON_HOME=/home/isucon/isuumo
+GIT_BRANCH=`git rev-parse --abbrev-ref HEAD`
+git push -u origin $GIT_BRANCH;
 
-ISUCON_KEYPATH=~/.ssh/isucon3.pem
-ISUCON_HOME=/home/isucon/isucari
-ISUCON_HOST=isucon9
-
-# sudo rm -f /tmp/mysql-slow.log /home/isucon/access_log;
-# sudo cp $ISUCON_HOME/config/my.cnf /usr/my.cnf;
-# sudo cp $ISUCON_HOME/config/nginx.conf /etc/nginx/conf/nginx.conf;
-# TODO
-# Go Restart
-# sudo service mysql restart;
-# sudo service httpd restart;
-
-scripts=$(cat <<EOF
+scripts_02=$(cat <<EOF
 cd $ISUCON_HOME;
-git pull origin master;
-cd $ISUCON_HOME/webapp/go;
-echo restart;
+git fetch origin $GIT_BRANCH;
+git checkout $GIT_BRANCH;
+git pull origin $GIT_BRANCH;
+make before;
+make restart;
+sudo systemctl stop isuumo.go.service;
+sudo systemctl stop nginx;
+exit;
+EOF
+)
+echo $scripts_02 | ssh -t -t isucon-server-002;
+
+
+scripts_01=$(cat <<EOF
+cd $ISUCON_HOME;
+git fetch origin $GIT_BRANCH;
+git checkout $GIT_BRANCH;
+git pull origin $GIT_BRANCH;
+make before;
+make restart;
+sudo systemctl stop mysql;
 exit;
 EOF
 )
 
-
 #Deploy
-echo $scripts | ssh -t -t $ISUCON_HOST
+echo $scripts_01 | ssh -t -t isucon-server-001;

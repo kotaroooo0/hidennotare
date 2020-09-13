@@ -1,14 +1,12 @@
-# FROM: https://github.com/tohutohu/isucon9/blob/master/Makefile
-export GO111MODULE=on
 DB_HOST:=127.0.0.1
 DB_PORT:=3306
-DB_USER:=isucari
-DB_PASS:=isucari
-DB_NAME:=isucari
+DB_USER:=isucon
+DB_PASS:=isucon
+DB_NAME:=isuumo
 
 MYSQL_CMD:=mysql -h$(DB_HOST) -P$(DB_PORT) -u$(DB_USER) -p$(DB_PASS) $(DB_NAME)
 
-NGX_LOG:=/tmp/access.log
+NGX_LOG:=/var/log/nginx/access.log
 MYSQL_LOG:=/tmp/slow-query.log
 
 KATARU_CFG:=./kataribe.toml
@@ -18,81 +16,29 @@ SLACKRAW:=slackcat
 
 PPROF:=go tool pprof -png -output pprof.png http://localhost:6060/debug/pprof/profile
 
-PROJECT_ROOT:=/home/isucon/isucari
-BUILD_DIR:=/home/isucon/isucari/webapp/go
-BIN_NAME:=isucari
+PROJECT_ROOT:=/home/isucon/isuumo
+BUILD_DIR:=/home/isucon/isuumo/webapp/go
+BIN_NAME:=isuumo
 
-CA:=-o /dev/null -s -w "%{http_code}\n"
-
-all: build
-
-.PHONY: clean
-clean:
-	cd $(BUILD_DIR); \
-	rm -rf torb
-
-deps:
-	cd $(BUILD_DIR); \
-	go mod download
-
-.PHONY: build
-build:
-	cd $(BUILD_DIR); \
-	go build -o $(BIN_NAME)
-	#TODO
 
 .PHONY: restart
 restart:
-	sudo systemctl restart isucari.golang.service
-
-.PHONY: test
-test:
-	curl localhost $(CA)
-
-# ここから元から作ってるやつ
-.PHONY: dev
-dev: build
-	cd $(BUILD_DIR); \
-	./$(BIN_NAME)
-
-.PHONY: bench-dev
-bench-dev: commit before slow-on dev
-
-.PHONY: bench
-bench: commit before build restart log
-
-.PHONY: log
-log:
-	sudo journalctl -u isucari.golang -n10 -f
-
-.PHONY: maji
-bench: commit before build restart
-
-.PHONY: anal
-anal: slow kataru
-
-.PHONY: push
-push:
-	git push
-
-.PHONY: commit
-commit:
-	cd $(PROJECT_ROOT); \
-	git add .; \
-	git commit --allow-empty -m "bench"
+	sh /home/isucon/env.sh;
+	cd $(BUILD_DIR); go build -o $(BIN_NAME)
+	sudo systemctl restart isuumo.go.service
 
 .PHONY: before
 before:
-	$(eval when := $(shell date "+%s"))
-	mkdir -p ~/logs/$(when)
-	@if [ -f $(NGX_LOG) ]; then \
-		sudo mv -f $(NGX_LOG) ~/logs/$(when)/ ; \
-	fi
-	# @if [ -f $(MYSQL_LOG) ]; then \
-	# 	sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ; \
-	# fi
+	git pull
+	sudo rm -f $(NGX_LOG)
+	sudo rm -f $(MYSQL_LOG)
+	sudo cp nginx.conf /etc/nginx/nginx.conf
+	sudo cp isuumo.conf /etc/nginx/sites-enabled/isuumo.conf
+	sudo cp my.cnf /etc/mysql/my.cnf
+	sudo cp mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf
+	sudo cp env.sh /home/isucon/env.sh
 	sudo systemctl restart nginx
-	# sudo systemctl restart mysql
+	sudo systemctl restart mysql
 
 .PHONY: slow
 slow:
@@ -107,24 +53,8 @@ pprof:
 	$(PPROF)
 	$(SLACKRAW) -n pprof.png ./pprof.png
 
-.PHONY: slow-on
-slow-on:
-	sudo mysql -e "set global slow_query_log_file = '$(MYSQL_LOG)'; set global long_query_time = 0; set global slow_query_log = ON;"
-
-.PHONY: slow-off
-slow-off:
-	sudo mysql -e "set global slow_query_log = OFF;"
-
 .PHONY: setup
 setup:
-	sudo apt install -y percona-toolkit dstat git unzip snapd
-	git config --global user.email "k33asby@gmail.com"
-	git config --global user.name "kotaroooo0"
-	git config --system alias.st status
-	git config --system alias.ad add
-	git config --system alias.ci commit
-	git config --system alias.co checkout
-	git config --system alias.di diff
 	wget https://github.com/matsuu/kataribe/releases/download/v0.4.1/kataribe-v0.4.1_linux_amd64.zip -O kataribe.zip
 	unzip -o kataribe.zip
 	sudo mv kataribe /usr/local/bin/
@@ -140,3 +70,4 @@ setup:
 	sudo mv slackcat /usr/local/bin/
 	sudo chmod +x /usr/local/bin/slackcat
 	slackcat --configure
+	sudo apt-get install percona-toolkit
